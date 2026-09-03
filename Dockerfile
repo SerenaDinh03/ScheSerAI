@@ -5,8 +5,8 @@ RUN apt-get update && apt-get install -y \
     libpq-dev \
     libpango-1.0-0 \
     libpangoft2-1.0-0 \
-    libharfbuzz \
-    libcairo2\
+    libharfbuzz0b \
+    libcairo2 \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app

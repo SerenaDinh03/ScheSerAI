@@ -1,6 +1,9 @@
 import uuid
+from datetime import date
 
-from django.db import models
+from django.core.validators import MinValueValidator
+from django.db import models, transaction
+from django.utils import timezone
 
 
 class Student(models.Model):
@@ -15,7 +18,9 @@ class Student(models.Model):
     name = models.CharField(max_length=255)
     dob = models.DateField(null=True, blank=True)
     start_date = models.DateField()
-    price_per_session = models.DecimalField(max_digits=12, decimal_places=0)
+    price_per_session = models.DecimalField(
+        max_digits=12, decimal_places=0, validators=[MinValueValidator(1)]
+    )
     status = models.CharField(
         max_length=10, choices=Status.choices, default=Status.ACTIVE
     )
@@ -24,6 +29,42 @@ class Student(models.Model):
 
     class Meta:
         verbose_name = "Học viên"
+
+    @property
+    def age(self):
+        if not self.dob:
+            return None
+        today = date.today()
+        had_birthday = (today.month, today.day) >= (self.dob.month, self.dob.day)
+        return today.year - self.dob.year - (0 if had_birthday else 1)
+
+    def has_related_data(self) -> bool:
+        from apps.attendance.models import Attendance
+
+        return (
+            self.schedules.exists()
+            or self.sessions.exists()
+            or Attendance.objects.filter(session__student=self).exists()
+            or self.monthly_reports.exists()
+        )
+
+    def upcoming_sessions(self):
+        return self.sessions.filter(
+            session_date__gte=timezone.localdate(), attendance__isnull=True
+        )
+
+    def deactivate(self) -> dict:
+        from apps.scheduling.calendar_sync import delete_calendar_event
+
+        with transaction.atomic():
+            self.status = self.Status.INACTIVE
+            self.save()
+            sessions = list(self.upcoming_sessions())
+            for session in sessions:
+                if session.google_event_id:
+                    delete_calendar_event(session.google_event_id)
+                session.delete()
+        return {"deleted_sessions_count": len(sessions)}
 
     def save(self, *args, **kwargs):
         # price_per_session cố định vĩnh viễn theo học viên (đã chốt trong backlog) -
