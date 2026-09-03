@@ -1,4 +1,5 @@
 from django.db import transaction
+from django.utils import timezone
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -74,3 +75,20 @@ class StudentViewSet(viewsets.ModelViewSet):
         with transaction.atomic():
             result = student.deactivate()
         return Response({"status": student.status, **result}, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=["get"], url_path="billing-preview")
+    def billing_preview(self, request, pk=None):
+        student = self.get_object()
+        today = timezone.localdate()
+        try:
+            month = int(request.query_params.get("month", today.month))
+            year = int(request.query_params.get("year", today.year))
+        except ValueError:
+            return Response(
+                {"detail": "month/year phải là số nguyên."}, status=status.HTTP_400_BAD_REQUEST
+            )
+        if not 1 <= month <= 12:
+            return Response(
+                {"detail": "month phải trong khoảng 1-12."}, status=status.HTTP_400_BAD_REQUEST
+            )
+        return Response(student.billing_preview(month, year))

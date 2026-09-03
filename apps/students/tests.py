@@ -285,3 +285,39 @@ class StudentAPITests(APITestCase):
         self.assertTrue(Session.objects.filter(pk=future_with_attendance.pk).exists())
         self.assertTrue(Session.objects.filter(pk=past_session.pk).exists())
         mock_delete.assert_called_once_with("evt-1")
+
+    # US 3.4
+    def test_billing_preview_counts_only_given_month_billable_sessions(self):
+        student = make_student(price_per_session=Decimal("200000"))
+        target = date(2026, 3, 15)
+        s1 = Session.objects.create(
+            student=student, session_date=target, start_time="18:00", end_time="19:00"
+        )
+        Attendance.objects.create(session=s1, status=Attendance.Status.PRESENT)
+        s2 = Session.objects.create(
+            student=student,
+            session_date=date(2026, 3, 20),
+            start_time="18:00",
+            end_time="19:00",
+        )
+        Attendance.objects.create(session=s2, status=Attendance.Status.ABSENT)
+        s3 = Session.objects.create(
+            student=student,
+            session_date=date(2026, 4, 1),
+            start_time="18:00",
+            end_time="19:00",
+        )
+        Attendance.objects.create(session=s3, status=Attendance.Status.PRESENT)
+
+        resp = self.client.get(f"/api/students/{student.id}/billing-preview/?month=3&year=2026")
+        self.assertEqual(resp.status_code, status.HTTP_200_OK, resp.data)
+        self.assertEqual(resp.data["total_sessions"], 1)
+        self.assertEqual(Decimal(resp.data["total_amount"]), Decimal("200000"))
+
+    def test_billing_preview_defaults_to_current_month(self):
+        student = make_student()
+        resp = self.client.get(f"/api/students/{student.id}/billing-preview/")
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        today = timezone.localdate()
+        self.assertEqual(resp.data["month"], today.month)
+        self.assertEqual(resp.data["year"], today.year)

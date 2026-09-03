@@ -53,6 +53,26 @@ class Student(models.Model):
             session_date__gte=timezone.localdate(), attendance__isnull=True
         )
 
+    def billing_count_for_month(self, month: int, year: int) -> int:
+        from apps.attendance.models import Attendance
+
+        return Attendance.objects.filter(
+            session__student=self,
+            is_billable=True,
+            session__session_date__year=year,
+            session__session_date__month=month,
+        ).count()
+
+    def billing_preview(self, month: int, year: int) -> dict:
+        total_sessions = self.billing_count_for_month(month, year)
+        return {
+            "month": month,
+            "year": year,
+            "total_sessions": total_sessions,
+            "price_per_session": self.price_per_session,
+            "total_amount": total_sessions * self.price_per_session,
+        }
+
     def deactivate(self) -> dict:
         from apps.scheduling.calendar_sync import delete_calendar_event
 

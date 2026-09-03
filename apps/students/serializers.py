@@ -2,6 +2,7 @@ from django.utils import timezone
 from rest_framework import serializers
 
 from apps.attendance.models import Attendance
+from apps.attendance.serializers import AttendanceSerializer
 from apps.scheduling.models import Schedule
 
 from .models import Student
@@ -13,14 +14,6 @@ class ScheduleNestedSerializer(serializers.ModelSerializer):
     class Meta:
         model = Schedule
         fields = ["id", "day_of_week", "day_of_week_display", "start_time", "end_time", "is_active"]
-
-
-class AttendanceNestedSerializer(serializers.ModelSerializer):
-    session_date = serializers.DateField(source="session.session_date", read_only=True)
-
-    class Meta:
-        model = Attendance
-        fields = ["id", "session_date", "status", "is_billable", "marked_at"]
 
 
 class StudentListSerializer(serializers.ModelSerializer):
@@ -82,13 +75,8 @@ class StudentDetailSerializer(serializers.ModelSerializer):
             .select_related("session")
             .order_by("-session__session_date")[:10]
         )
-        return AttendanceNestedSerializer(qs, many=True).data
+        return AttendanceSerializer(qs, many=True).data
 
     def get_sessions_this_month_count(self, obj):
         today = timezone.localdate()
-        return Attendance.objects.filter(
-            session__student=obj,
-            is_billable=True,
-            session__session_date__year=today.year,
-            session__session_date__month=today.month,
-        ).count()
+        return obj.billing_count_for_month(today.month, today.year)
