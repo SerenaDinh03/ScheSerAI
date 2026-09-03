@@ -5,7 +5,7 @@ from rest_framework.response import Response
 from apps.attendance.serializers import AttendanceSerializer, MarkAttendanceSerializer
 
 from .models import Session
-from .serializers import SessionSerializer
+from .serializers import RescheduleSerializer, SessionSerializer
 
 
 class SessionViewSet(viewsets.ReadOnlyModelViewSet):
@@ -72,3 +72,20 @@ class SessionViewSet(viewsets.ReadOnlyModelViewSet):
             except ValueError as exc:
                 results.append({"session": session_id, "ok": False, "error": str(exc)})
         return Response(results, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=["post"])
+    def reschedule(self, request, pk=None):
+        session = self.get_object()
+        input_serializer = RescheduleSerializer(data=request.data)
+        input_serializer.is_valid(raise_exception=True)
+        session.reschedule(**input_serializer.validated_data)
+        return Response(SessionSerializer(session).data, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=["post"])
+    def cancel(self, request, pk=None):
+        session = self.get_object()
+        try:
+            session.cancel()
+        except ValueError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(status=status.HTTP_204_NO_CONTENT)

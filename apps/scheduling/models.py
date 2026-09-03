@@ -1,4 +1,5 @@
 import uuid
+from datetime import date, datetime
 
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
@@ -127,6 +128,75 @@ class Session(models.Model):
                 "Vui lòng xuất lại báo cáo để cập nhật (báo cáo cũ sẽ bị ghi đè)."
             )
         return {"attendance": attendance, "warning": warning}
+
+    def has_attendance(self) -> bool:
+        from apps.attendance.models import Attendance
+
+        try:
+            self.attendance
+            return True
+        except Attendance.DoesNotExist:
+            return False
+
+    def reschedule(self, session_date, start_time, end_time=None) -> dict:
+        """Dời buổi học sang ngày/giờ khác (US 5.1).
+
+        Chỉ ảnh hưởng buổi này (không đổi Schedule gốc - vốn đã tách biệt vì
+        Session là bản ghi riêng). Nếu không truyền end_time mới, giữ nguyên
+        thời lượng buổi học cũ.
+        """
+        from apps.notifications.models import Notification
+        from apps.scheduling.calendar_sync import update_calendar_event
+
+        if end_time is None:
+            duration = datetime.combine(date.min, self.end_time) - datetime.combine(
+                date.min, self.start_time
+            )
+            end_time = (datetime.combine(date.min, start_time) + duration).time()
+
+        old_date, old_start = self.session_date, self.start_time
+        self.session_date = session_date
+        self.start_time = start_time
+        self.end_time = end_time
+        self.status = self.Status.RESCHEDULED
+        self.save()
+
+        if self.google_event_id:
+            update_calendar_event(self.google_event_id, self)
+
+        Notification.objects.create(
+            teacher=self.student.teacher,
+            message=(
+                f"Buổi học của {self.student.name} đã được dời từ "
+                f"{old_date.strftime('%d/%m/%Y')} {old_start.strftime('%H:%M')} "
+                f"sang {session_date.strftime('%d/%m/%Y')} {start_time.strftime('%H:%M')}."
+            ),
+        )
+        return {"session": self}
+
+    def cancel(self) -> dict:
+        """Hủy hẳn buổi học (US 5.2) - chặn nếu đã điểm danh để không mất dữ liệu học phí."""
+        from apps.notifications.models import Notification
+        from apps.scheduling.calendar_sync import delete_calendar_event
+
+        if self.has_attendance():
+            raise ValueError(
+                "Không thể hủy buổi học đã điểm danh - dữ liệu học phí sẽ bị mất."
+            )
+
+        if self.google_event_id:
+            delete_calendar_event(self.google_event_id)
+
+        Notification.objects.create(
+            teacher=self.student.teacher,
+            message=(
+                f"Buổi học của {self.student.name} ngày "
+                f"{self.session_date.strftime('%d/%m/%Y')} {self.start_time.strftime('%H:%M')} "
+                "đã bị hủy."
+            ),
+        )
+        self.delete()
+        return {"cancelled": True}
 
     def __str__(self):
         return f"{self.student.name} - {self.session_date} {self.start_time}"

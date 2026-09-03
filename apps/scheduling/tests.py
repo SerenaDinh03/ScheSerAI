@@ -9,6 +9,7 @@ from rest_framework.test import APITestCase
 
 from apps.attendance.models import Attendance
 from apps.billing.models import MonthlyReport
+from apps.notifications.models import Notification
 from apps.students.models import Student
 from apps.teacher.models import Teacher
 
@@ -101,6 +102,47 @@ class SessionModelTests(TestCase):
         self.assertIn(started_no_attendance.id, pending_ids)
         self.assertNotIn(started_with_attendance.id, pending_ids)
         self.assertNotIn(not_started.id, pending_ids)
+
+    def test_reschedule_updates_fields_status_and_preserves_duration(self):
+        session = make_session(
+            self.student, date(2026, 1, 1), start_time=time(18, 0), google_event_id="evt-1"
+        )
+        session.reschedule(session_date=date(2026, 1, 8), start_time=time(20, 0))
+        session.refresh_from_db()
+        self.assertEqual(session.session_date, date(2026, 1, 8))
+        self.assertEqual(session.start_time, time(20, 0))
+        self.assertEqual(session.end_time, time(21, 0))  # giữ nguyên thời lượng 1 tiếng
+        self.assertEqual(session.status, Session.Status.RESCHEDULED)
+
+    def test_reschedule_does_not_affect_schedule(self):
+        from .models import Schedule
+
+        schedule = Schedule.objects.create(
+            student=self.student, day_of_week=0, start_time=time(18, 0), end_time=time(19, 0)
+        )
+        session = make_session(self.student, date(2026, 1, 1), schedule=schedule)
+        session.reschedule(session_date=date(2026, 1, 8), start_time=time(20, 0))
+        schedule.refresh_from_db()
+        self.assertEqual(schedule.start_time, time(18, 0))
+
+    def test_reschedule_creates_notification(self):
+        session = make_session(self.student, date(2026, 1, 1), start_time=time(18, 0))
+        session.reschedule(session_date=date(2026, 1, 8), start_time=time(20, 0))
+        self.assertEqual(Notification.objects.filter(teacher=self.student.teacher).count(), 1)
+
+    def test_cancel_deletes_session_and_creates_notification(self):
+        session = make_session(self.student, date.today() + timedelta(days=1))
+        session_id = session.id
+        session.cancel()
+        self.assertFalse(Session.objects.filter(pk=session_id).exists())
+        self.assertEqual(Notification.objects.filter(teacher=self.student.teacher).count(), 1)
+
+    def test_cancel_rejects_session_with_attendance(self):
+        session = make_session(self.student, date.today() - timedelta(days=1))
+        Attendance.objects.create(session=session, status=Attendance.Status.PRESENT)
+        with self.assertRaises(ValueError):
+            session.cancel()
+        self.assertTrue(Session.objects.filter(pk=session.id).exists())
 
 
 class SessionAPITests(APITestCase):
@@ -197,3 +239,37 @@ class SessionAPITests(APITestCase):
         self.assertTrue(results[str(ok_session.id)]["ok"])
         self.assertFalse(results[str(future_session.id)]["ok"])
         self.assertFalse(results["00000000-0000-0000-0000-000000000099"]["ok"])
+
+    def test_reschedule_success(self):
+        session = make_session(self.student, date(2026, 1, 1), start_time=time(18, 0))
+        resp = self.client.post(
+            f"/api/sessions/{session.id}/reschedule/",
+            {"session_date": "2026-01-08", "start_time": "20:00"},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, status.HTTP_200_OK, resp.data)
+        self.assertEqual(resp.data["session_date"], "2026-01-08")
+        self.assertEqual(resp.data["status"], "rescheduled")
+
+    def test_reschedule_with_explicit_end_time(self):
+        session = make_session(self.student, date(2026, 1, 1), start_time=time(18, 0))
+        resp = self.client.post(
+            f"/api/sessions/{session.id}/reschedule/",
+            {"session_date": "2026-01-08", "start_time": "20:00", "end_time": "22:00"},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, status.HTTP_200_OK, resp.data)
+        self.assertEqual(resp.data["end_time"], "22:00:00")
+
+    def test_cancel_success(self):
+        session = make_session(self.student, date.today() + timedelta(days=1))
+        resp = self.client.post(f"/api/sessions/{session.id}/cancel/")
+        self.assertEqual(resp.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertFalse(Session.objects.filter(pk=session.id).exists())
+
+    def test_cancel_rejects_when_attendance_exists(self):
+        session = make_session(self.student, date.today() - timedelta(days=1))
+        Attendance.objects.create(session=session, status=Attendance.Status.PRESENT)
+        resp = self.client.post(f"/api/sessions/{session.id}/cancel/")
+        self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertTrue(Session.objects.filter(pk=session.id).exists())

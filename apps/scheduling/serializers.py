@@ -29,3 +29,9 @@ class SessionSerializer(serializers.ModelSerializer):
             return AttendanceSerializer(obj.attendance).data
         except Attendance.DoesNotExist:
             return None
+
+
+class RescheduleSerializer(serializers.Serializer):
+    session_date = serializers.DateField()
+    start_time = serializers.TimeField()
+    end_time = serializers.TimeField(required=False, default=None)
