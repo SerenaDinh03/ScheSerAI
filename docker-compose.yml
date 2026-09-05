@@ -17,29 +17,29 @@ services:
       retries: 5
 
   web:
-    build: .
+    build: ./backend
     restart: unless-stopped
     # Dùng runserver khi dev để có auto-reload; đổi sang CMD trong Dockerfile khi deploy production
     command: python manage.py runserver 0.0.0.0:8000
     volumes:
-      - .:/app
+      - ./backend:/app
     ports:
       - "8000:8000"
     env_file:
-      - .env
+      - ./backend/.env
     depends_on:
       db:
         condition: service_healthy
 
   # Optional: chỉ cần nếu dùng Django-Q/Celery để chạy job tự sinh Session hàng tuần
   worker:
-    build: .
+    build: ./backend
     restart: unless-stopped
     command: python manage.py qcluster
     volumes:
-      - .:/app
+      - ./backend:/app
     env_file:
-      - .env
+      - ./backend/.env
     depends_on:
       db:
         condition: service_healthy

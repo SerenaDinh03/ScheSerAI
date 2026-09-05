@@ -4,8 +4,39 @@ from rest_framework.response import Response
 
 from apps.attendance.serializers import AttendanceSerializer, MarkAttendanceSerializer
 
-from .models import Session
-from .serializers import RescheduleSerializer, SessionSerializer
+from .models import Schedule, Session
+from .serializers import RescheduleSerializer, ScheduleSerializer, SessionSerializer
+
+
+class ScheduleViewSet(viewsets.ModelViewSet):
+    serializer_class = ScheduleSerializer
+    http_method_names = ["get", "post", "head", "options"]
+
+    def get_queryset(self):
+        qs = Schedule.objects.select_related("student").order_by("day_of_week", "start_time")
+        student_id = self.request.query_params.get("student")
+        if student_id:
+            qs = qs.filter(student_id=student_id)
+        return qs
+
+    def perform_create(self, serializer):
+        schedule = serializer.save()
+        schedule.generate_sessions()
+
+    @action(detail=True, methods=["post"])
+    def pause(self, request, pk=None):
+        schedule = self.get_object()
+        schedule.is_active = False
+        schedule.save(update_fields=["is_active"])
+        return Response(ScheduleSerializer(schedule).data)
+
+    @action(detail=True, methods=["post"])
+    def resume(self, request, pk=None):
+        schedule = self.get_object()
+        schedule.is_active = True
+        schedule.save(update_fields=["is_active"])
+        schedule.generate_sessions()
+        return Response(ScheduleSerializer(schedule).data)
 
 
 class SessionViewSet(viewsets.ReadOnlyModelViewSet):

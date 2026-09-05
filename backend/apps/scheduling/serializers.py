@@ -3,7 +3,24 @@ from rest_framework import serializers
 from apps.attendance.models import Attendance
 from apps.attendance.serializers import AttendanceSerializer
 
-from .models import Session
+from .models import Schedule, Session
+
+
+class ScheduleSerializer(serializers.ModelSerializer):
+    day_of_week_display = serializers.CharField(source="get_day_of_week_display", read_only=True)
+
+    class Meta:
+        model = Schedule
+        fields = [
+            "id",
+            "student",
+            "day_of_week",
+            "day_of_week_display",
+            "start_time",
+            "end_time",
+            "is_active",
+        ]
+        read_only_fields = ["id", "is_active"]
 
 
 class SessionSerializer(serializers.ModelSerializer):

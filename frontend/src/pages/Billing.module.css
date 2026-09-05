@@ -1,0 +1,82 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  align-items: start;
+}
+
+.reportRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
+  background: var(--paper-alt);
+}
+
+.reportName {
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.reportMeta {
+  font-size: 0.78rem;
+  color: var(--ink-soft);
+}
+
+.reportAmount {
+  font-family: var(--font-display);
+  font-weight: 700;
+  color: var(--lilac-deep);
+  margin-left: auto;
+}
+
+.formRow {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.select {
+  padding: 9px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-soft);
+  background: var(--surface);
+  font-family: var(--font-body);
+  font-size: 0.88rem;
+  color: var(--ink);
+}
+
+.previewTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.previewTable th,
+.previewTable td {
+  text-align: left;
+  padding: 8px 10px;
+  border-bottom: 1px dashed var(--border-soft);
+}
+
+.previewTable th {
+  color: var(--ink-soft);
+  font-weight: 700;
+}
+
+.totalLine {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 4px 0;
+  font-family: var(--font-display);
+  font-weight: 700;
+  color: var(--ink);
+}

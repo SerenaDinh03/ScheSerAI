@@ -1,0 +1,52 @@
+:root {
+  /* Pastel palette (from brand reference) */
+  --pastel-pink: #ffd1dc;
+  --pastel-blue: #aec6cf;
+  --lavender: #e6e6fa;
+  --mint-green: #aaf0d1;
+  --pastel-yellow: #fdfd96;
+  --peach: #ffdab9;
+  --cream: #fffdd0;
+  --powder-blue: #b0e0e6;
+  --sage-green: #c1d7ae;
+  --lilac: #dcd0ff;
+
+  /* Deeper variants of the same hues, for text/icons that need contrast */
+  --pastel-pink-deep: #e8879c;
+  --pastel-blue-deep: #5f8ea3;
+  --lavender-deep: #9b8fd6;
+  --mint-green-deep: #4fae8c;
+  --peach-deep: #e8985f;
+  --sage-green-deep: #7a9660;
+  --lilac-deep: #8f7ae0;
+
+  /* Ink + surfaces */
+  --ink: #4a3b5c;
+  --ink-soft: #7d6d92;
+  --paper: #fffaf6;
+  --paper-alt: #fdf6fb;
+  --surface: #ffffff;
+  --border-soft: #ecdff0;
+
+  /* Semantic */
+  --accent: var(--lilac-deep);
+  --success: var(--mint-green-deep);
+  --success-bg: var(--mint-green);
+  --warning: var(--peach-deep);
+  --warning-bg: var(--peach);
+  --danger: var(--pastel-pink-deep);
+  --danger-bg: var(--pastel-pink);
+  --info: var(--pastel-blue-deep);
+  --info-bg: var(--powder-blue);
+
+  /* Type */
+  --font-display: "Baloo 2", "Quicksand", system-ui, sans-serif;
+  --font-body: "Quicksand", system-ui, sans-serif;
+
+  /* Shape + shadow */
+  --radius-sm: 12px;
+  --radius-md: 18px;
+  --radius-lg: 26px;
+  --shadow-soft: 0 8px 24px -12px rgba(142, 90, 168, 0.28);
+  --shadow-pop: 0 14px 32px -14px rgba(142, 90, 168, 0.35);
+}

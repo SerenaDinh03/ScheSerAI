@@ -1,0 +1,24 @@
+.card {
+  position: relative;
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-soft);
+  box-shadow: var(--shadow-soft);
+  padding: 22px;
+}
+
+.tintPink {
+  background: linear-gradient(160deg, #fff 60%, rgba(255, 209, 220, 0.4));
+}
+.tintBlue {
+  background: linear-gradient(160deg, #fff 60%, rgba(174, 198, 207, 0.35));
+}
+.tintLavender {
+  background: linear-gradient(160deg, #fff 60%, rgba(230, 230, 250, 0.55));
+}
+.tintMint {
+  background: linear-gradient(160deg, #fff 60%, rgba(170, 240, 209, 0.35));
+}
+.tintPeach {
+  background: linear-gradient(160deg, #fff 60%, rgba(255, 218, 185, 0.4));
+}

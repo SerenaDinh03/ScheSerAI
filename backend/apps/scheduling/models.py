@@ -1,5 +1,5 @@
 import uuid
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
@@ -32,6 +32,41 @@ class Schedule(models.Model):
 
     class Meta:
         verbose_name = "Lịch cố định"
+
+    def generate_sessions(self, weeks_ahead: int = 6) -> list:
+        """Sinh trước Session cho N tuần tới theo khung giờ cố định (US 1.2).
+
+        day_of_week (0=Thứ Hai..6=Chủ Nhật) khớp trực tiếp với date.weekday()
+        của Python nên không cần quy đổi. An toàn khi gọi lại nhiều lần (job
+        định kỳ mở rộng cửa sổ 4-8 tuần) vì bỏ qua ngày đã có Session.
+        """
+        from apps.scheduling.calendar_sync import create_calendar_event
+
+        if not self.is_active:
+            return []
+
+        today = timezone.localdate()
+        days_ahead = (self.day_of_week - today.weekday()) % 7
+        first_date = today + timedelta(days=days_ahead)
+
+        created = []
+        for week in range(weeks_ahead):
+            target_date = first_date + timedelta(weeks=week)
+            if Session.objects.filter(schedule=self, session_date=target_date).exists():
+                continue
+            session = Session.objects.create(
+                student=self.student,
+                schedule=self,
+                session_date=target_date,
+                start_time=self.start_time,
+                end_time=self.end_time,
+            )
+            event_id = create_calendar_event(session)
+            if event_id:
+                session.google_event_id = event_id
+                session.save(update_fields=["google_event_id"])
+            created.append(session)
+        return created
 
     def __str__(self):
         return f"{self.student.name} - {self.get_day_of_week_display()} {self.start_time}"

@@ -1,0 +1,92 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.statGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+
+.columns {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 20px;
+  align-items: start;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.sessionRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
+  background: var(--paper-alt);
+}
+
+.sessionDate {
+  width: 64px;
+  flex-shrink: 0;
+  text-align: center;
+  font-family: var(--font-display);
+  font-weight: 700;
+  color: var(--lilac-deep);
+  font-size: 0.85rem;
+  line-height: 1.2;
+}
+
+.sessionInfo {
+  flex: 1;
+  min-width: 0;
+}
+
+.sessionName {
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.sessionTime {
+  font-size: 0.8rem;
+  color: var(--ink-soft);
+}
+
+.notifRow {
+  display: flex;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
+  background: var(--paper-alt);
+  font-size: 0.85rem;
+}
+
+.notifUnreadDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--pastel-pink-deep);
+  margin-top: 6px;
+  flex-shrink: 0;
+}
+
+.notifTime {
+  color: var(--ink-soft);
+  font-size: 0.72rem;
+  margin-top: 3px;
+}
+
+@media (max-width: 980px) {
+  .statGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .columns {
+    grid-template-columns: 1fr;
+  }
+}

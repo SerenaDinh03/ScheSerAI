@@ -80,6 +80,11 @@ USE_TZ = True
 
 STATIC_URL = "static/"
 
+# Nơi lưu file báo cáo PNG/PDF đã xuất (US 4.2). MVP dùng disk cục bộ (mount qua
+# docker volume); nếu deploy multi-instance sau này nên đổi sang S3/object storage.
+MEDIA_URL = "/media/"
+MEDIA_ROOT = BASE_DIR / "media"
+
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # django-q2: chạy job nền (sinh SESSION hàng tuần từ SCHEDULE - US 1.2).
@@ -93,6 +98,12 @@ Q_CLUSTER = {
 
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "")
 GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET", "")
+GOOGLE_OAUTH_REDIRECT_URI = os.getenv(
+    "GOOGLE_OAUTH_REDIRECT_URI", "http://localhost:8000/api/google/callback/"
+)
+# Fernet key (Fernet.generate_key()) để mã hóa google_refresh_token khi lưu DB.
+# Bỏ trống ở dev sẽ tự suy ra key từ SECRET_KEY (xem apps/teacher/crypto.py).
+GOOGLE_TOKEN_ENCRYPTION_KEY = os.getenv("GOOGLE_TOKEN_ENCRYPTION_KEY", "")
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
