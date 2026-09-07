@@ -41,6 +41,17 @@
   font-weight: 600;
   color: var(--ink-soft);
   box-shadow: var(--shadow-soft);
+  cursor: default;
+}
+
+.googlePillAction {
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.googlePillAction:hover {
+  border-color: var(--lilac);
+  color: var(--ink);
 }
 
 .dot {

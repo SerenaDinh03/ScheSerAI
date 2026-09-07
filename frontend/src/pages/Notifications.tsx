@@ -1,9 +1,9 @@
-import { useState } from "react";
 import styles from "./Notifications.module.css";
 import { Card } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
 import { SectionHeading } from "../components/ui/SectionHeading";
-import { notifications as initialNotifications } from "../data/mockData";
+import { useAsync } from "../hooks/useAsync";
+import { listNotifications, markAllNotificationsRead, markNotificationRead } from "../api/notifications";
 
 function timeLabel(iso: string) {
   return new Date(iso).toLocaleString("vi-VN", {
@@ -15,15 +15,17 @@ function timeLabel(iso: string) {
 }
 
 export function Notifications() {
-  const [items, setItems] = useState(initialNotifications);
-  const unreadCount = items.filter((n) => !n.isRead).length;
+  const { data: items, loading, error, refetch } = useAsync(() => listNotifications(), []);
+  const unreadCount = (items ?? []).filter((n) => !n.is_read).length;
 
-  function markRead(id: string) {
-    setItems((prev) => prev.map((n) => (n.id === id ? { ...n, isRead: true } : n)));
+  async function markRead(id: string) {
+    await markNotificationRead(id);
+    refetch();
   }
 
-  function markAllRead() {
-    setItems((prev) => prev.map((n) => ({ ...n, isRead: true })));
+  async function markAllRead() {
+    await markAllNotificationsRead();
+    refetch();
   }
 
   return (
@@ -39,25 +41,43 @@ export function Notifications() {
         }
       />
 
-      <Card>
-        <div className={styles.list}>
-          {items.map((n) => (
-            <div
-              key={n.id}
-              className={`${styles.row} ${!n.isRead ? styles.rowUnread : ""}`}
-              onClick={() => markRead(n.id)}
-              role="button"
-              tabIndex={0}
-            >
-              <span className={`${styles.dot} ${n.isRead ? styles.dotRead : ""}`} />
-              <div className={styles.message}>
-                {n.message}
-                <div className={styles.time}>{timeLabel(n.createdAt)}</div>
-              </div>
+      {error && (
+        <Card>
+          <p style={{ color: "var(--danger)" }}>Không tải được thông báo: {error}</p>
+        </Card>
+      )}
+
+      {!error && loading && (
+        <Card>
+          <p style={{ color: "var(--ink-soft)" }}>Đang tải...</p>
+        </Card>
+      )}
+
+      {!error && !loading && (
+        <Card>
+          {(items ?? []).length === 0 ? (
+            <p style={{ color: "var(--ink-soft)" }}>Chưa có thông báo nào.</p>
+          ) : (
+            <div className={styles.list}>
+              {(items ?? []).map((n) => (
+                <div
+                  key={n.id}
+                  className={`${styles.row} ${!n.is_read ? styles.rowUnread : ""}`}
+                  onClick={() => !n.is_read && markRead(n.id)}
+                  role="button"
+                  tabIndex={0}
+                >
+                  <span className={`${styles.dot} ${n.is_read ? styles.dotRead : ""}`} />
+                  <div className={styles.message}>
+                    {n.message}
+                    <div className={styles.time}>{timeLabel(n.created_at)}</div>
+                  </div>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
-      </Card>
+          )}
+        </Card>
+      )}
     </div>
   );
 }

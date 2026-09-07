@@ -5,8 +5,20 @@ import { Students } from "./pages/Students";
 import { Schedule } from "./pages/Schedule";
 import { Billing } from "./pages/Billing";
 import { Notifications } from "./pages/Notifications";
+import { Login } from "./pages/Login";
+import { useAuth } from "./context/AuthContext";
 
 export default function App() {
+  const { status } = useAuth();
+
+  if (status === "loading") {
+    return null;
+  }
+
+  if (status === "anonymous") {
+    return <Login />;
+  }
+
   return (
     <Routes>
       <Route element={<AppLayout />}>

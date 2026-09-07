@@ -2,6 +2,7 @@ import { Outlet } from "react-router-dom";
 import styles from "./AppLayout.module.css";
 import { Sidebar } from "./Sidebar";
 import { TopBar } from "./TopBar";
+import { GoogleCallbackBanner } from "./GoogleCallbackBanner";
 
 export function AppLayout() {
   return (
@@ -9,6 +10,7 @@ export function AppLayout() {
       <Sidebar />
       <div className={styles.main}>
         <TopBar />
+        <GoogleCallbackBanner />
         <main className={styles.content}>
           <Outlet />
         </main>

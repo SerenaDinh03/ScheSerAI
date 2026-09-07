@@ -1,11 +1,16 @@
-from rest_framework import status, viewsets
+from rest_framework import mixins, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
 from apps.attendance.serializers import AttendanceSerializer, MarkAttendanceSerializer
 
 from .models import Schedule, Session
-from .serializers import RescheduleSerializer, ScheduleSerializer, SessionSerializer
+from .serializers import (
+    RescheduleSerializer,
+    ScheduleSerializer,
+    SessionCreateSerializer,
+    SessionSerializer,
+)
 
 
 class ScheduleViewSet(viewsets.ModelViewSet):
@@ -39,8 +44,24 @@ class ScheduleViewSet(viewsets.ModelViewSet):
         return Response(ScheduleSerializer(schedule).data)
 
 
-class SessionViewSet(viewsets.ReadOnlyModelViewSet):
+class SessionViewSet(mixins.CreateModelMixin, viewsets.ReadOnlyModelViewSet):
+    """Session chỉ được sửa qua các action riêng (mark-attendance/reschedule/
+    cancel), không có update/destroy chung chung - nhưng có thêm create để
+    giáo viên tự thêm 1 buổi học lẻ ngoài lịch cố định (vd buổi đã dạy trước
+    khi vào hệ thống, nên Schedule.generate_sessions không sinh ra được)."""
+
     serializer_class = SessionSerializer
+
+    def get_serializer_class(self):
+        if self.action == "create":
+            return SessionCreateSerializer
+        return SessionSerializer
+
+    def create(self, request, *args, **kwargs):
+        input_serializer = self.get_serializer(data=request.data)
+        input_serializer.is_valid(raise_exception=True)
+        session = input_serializer.save()
+        return Response(SessionSerializer(session).data, status=status.HTTP_201_CREATED)
 
     def get_queryset(self):
         qs = Session.objects.select_related("student")

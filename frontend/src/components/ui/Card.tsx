@@ -1,4 +1,4 @@
-import type { PropsWithChildren } from "react";
+import type { HTMLAttributes } from "react";
 import styles from "./Card.module.css";
 
 type Tint = "pink" | "blue" | "lavender" | "mint" | "peach" | "none";
@@ -12,11 +12,10 @@ const tintClass: Record<Tint, string> = {
   none: "",
 };
 
-interface CardProps {
+interface CardProps extends HTMLAttributes<HTMLDivElement> {
   tint?: Tint;
-  className?: string;
 }
 
-export function Card({ tint = "none", className = "", children }: PropsWithChildren<CardProps>) {
-  return <div className={`${styles.card} ${tintClass[tint]} ${className}`}>{children}</div>;
+export function Card({ tint = "none", className = "", ...rest }: CardProps) {
+  return <div className={`${styles.card} ${tintClass[tint]} ${className}`} {...rest} />;
 }

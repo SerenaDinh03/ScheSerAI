@@ -21,6 +21,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "django_q",
     "rest_framework",
+    "corsheaders",
     "apps.teacher",
     "apps.students",
     "apps.scheduling",
@@ -31,6 +32,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "corsheaders.middleware.CorsMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -113,3 +115,11 @@ REST_FRAMEWORK = {
         "rest_framework.permissions.IsAuthenticated",
     ],
 }
+
+# Frontend (Vite) chạy khác port -> khác origin dù cùng host, nên cần khai báo
+# tường minh cho cả CORS (đọc response) lẫn CSRF (Django coi khác port là
+# "site" giống nhau nhưng vẫn cần whitelist origin cho request không an toàn).
+FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
+CORS_ALLOWED_ORIGINS = [FRONTEND_URL]
+CORS_ALLOW_CREDENTIALS = True
+CSRF_TRUSTED_ORIGINS = [FRONTEND_URL]

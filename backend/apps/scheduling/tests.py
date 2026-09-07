@@ -273,3 +273,33 @@ class SessionAPITests(APITestCase):
         resp = self.client.post(f"/api/sessions/{session.id}/cancel/")
         self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertTrue(Session.objects.filter(pk=session.id).exists())
+
+    def test_create_manual_session_in_the_past(self):
+        """Thêm buổi học lẻ đã diễn ra trước khi giáo viên vào hệ thống (US 5.3) -
+        Schedule.generate_sessions() không backfill được buổi này."""
+        resp = self.client.post(
+            "/api/sessions/",
+            {
+                "student": str(self.student.id),
+                "session_date": "2024-01-04",
+                "start_time": "19:00",
+                "end_time": "20:00",
+            },
+            format="json",
+        )
+        self.assertEqual(resp.status_code, status.HTTP_201_CREATED, resp.data)
+        self.assertEqual(resp.data["student_name"], self.student.name)
+        self.assertEqual(resp.data["session_date"], "2024-01-04")
+        self.assertIsNone(resp.data["attendance"])
+
+        session = Session.objects.get(pk=resp.data["id"])
+        self.assertIsNone(session.schedule)
+        self.assertEqual(session.status, Session.Status.SCHEDULED)
+
+    def test_create_manual_session_requires_student(self):
+        resp = self.client.post(
+            "/api/sessions/",
+            {"session_date": "2024-01-04", "start_time": "19:00", "end_time": "20:00"},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)

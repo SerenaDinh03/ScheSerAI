@@ -54,17 +54,13 @@ class Schedule(models.Model):
             target_date = first_date + timedelta(weeks=week)
             if Session.objects.filter(schedule=self, session_date=target_date).exists():
                 continue
-            session = Session.objects.create(
+            session = Session.create_and_sync(
                 student=self.student,
-                schedule=self,
                 session_date=target_date,
                 start_time=self.start_time,
                 end_time=self.end_time,
+                schedule=self,
             )
-            event_id = create_calendar_event(session)
-            if event_id:
-                session.google_event_id = event_id
-                session.save(update_fields=["google_event_id"])
             created.append(session)
         return created
 
@@ -122,6 +118,26 @@ class Session(models.Model):
     class Meta:
         verbose_name = "Buổi học"
         ordering = ["session_date", "start_time"]
+
+    @classmethod
+    def create_and_sync(cls, *, student, session_date, start_time, end_time, schedule=None) -> "Session":
+        """Tạo 1 Session (từ Schedule.generate_sessions hoặc thêm thủ công 1 buổi
+        lẻ - kể cả buổi đã diễn ra trước khi vào hệ thống, để vẫn tính được học
+        phí) và đẩy lên Google Calendar nếu đã kết nối."""
+        from apps.scheduling.calendar_sync import create_calendar_event
+
+        session = cls.objects.create(
+            student=student,
+            schedule=schedule,
+            session_date=session_date,
+            start_time=start_time,
+            end_time=end_time,
+        )
+        event_id = create_calendar_event(session)
+        if event_id:
+            session.google_event_id = event_id
+            session.save(update_fields=["google_event_id"])
+        return session
 
     def has_started(self) -> bool:
         """Giờ học đã tới/qua chưa - buổi tương lai không được điểm danh trước (US 3.1)."""

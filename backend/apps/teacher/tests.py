@@ -77,15 +77,22 @@ class GoogleOAuthAPITests(APITestCase):
 
     def test_callback_rejects_error_param(self):
         resp = self.client.get("/api/google/callback/?error=access_denied")
-        self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(resp.status_code, status.HTTP_302_FOUND)
+        query = parse_qs(urlsplit(resp.url).query)
+        self.assertIn("google_error", query)
 
     def test_callback_rejects_missing_or_mismatched_state(self):
         resp = self.client.get("/api/google/callback/?code=abc&state=wrong")
-        self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(resp.status_code, status.HTTP_302_FOUND)
+        query = parse_qs(urlsplit(resp.url).query)
+        self.assertIn("google_error", query)
 
+    @patch("apps.teacher.views.google_client.find_calendar_id_by_name")
     @patch("apps.teacher.views.google_client.fetch_account_email")
     @patch("apps.teacher.views.google_client.exchange_code")
-    def test_callback_success_stores_encrypted_token_and_email(self, mock_exchange, mock_email):
+    def test_callback_success_stores_encrypted_token_and_email(
+        self, mock_exchange, mock_email, mock_find_calendar
+    ):
         # Đi qua /connect/ trước để session có sẵn state hợp lệ.
         connect_resp = self.client.get("/api/google/connect/")
         auth_url = connect_resp.url
@@ -95,11 +102,12 @@ class GoogleOAuthAPITests(APITestCase):
         mock_credentials.refresh_token = "real-refresh-token"
         mock_exchange.return_value = mock_credentials
         mock_email.return_value = "teacher@gmail.com"
+        mock_find_calendar.return_value = None  # không có calendar "Teaching" -> rơi về primary
 
         resp = self.client.get(f"/api/google/callback/?code=fake-code&state={state}")
-        self.assertEqual(resp.status_code, status.HTTP_200_OK, resp.data)
-        self.assertTrue(resp.data["connected"])
-        self.assertEqual(resp.data["email"], "teacher@gmail.com")
+        self.assertEqual(resp.status_code, status.HTTP_302_FOUND)
+        query = parse_qs(urlsplit(resp.url).query)
+        self.assertEqual(query.get("google_connected"), ["teacher@gmail.com"])
 
         teacher = Teacher.load()
         self.assertTrue(teacher.is_google_connected)
@@ -109,8 +117,28 @@ class GoogleOAuthAPITests(APITestCase):
         status_resp = self.client.get("/api/google/status/")
         self.assertTrue(status_resp.data["connected"])
 
+    @patch("apps.teacher.views.google_client.find_calendar_id_by_name")
+    @patch("apps.teacher.views.google_client.fetch_account_email")
     @patch("apps.teacher.views.google_client.exchange_code")
-    def test_callback_without_refresh_token_returns_400(self, mock_exchange):
+    def test_callback_uses_teaching_calendar_when_it_exists(
+        self, mock_exchange, mock_email, mock_find_calendar
+    ):
+        connect_resp = self.client.get("/api/google/connect/")
+        state = parse_qs(urlsplit(connect_resp.url).query).get("state", [None])[0]
+
+        mock_credentials = MagicMock()
+        mock_credentials.refresh_token = "real-refresh-token"
+        mock_exchange.return_value = mock_credentials
+        mock_email.return_value = "teacher@gmail.com"
+        mock_find_calendar.return_value = "teaching-calendar-id@group.calendar.google.com"
+
+        self.client.get(f"/api/google/callback/?code=fake-code&state={state}")
+
+        teacher = Teacher.load()
+        self.assertEqual(teacher.google_calendar_id, "teaching-calendar-id@group.calendar.google.com")
+
+    @patch("apps.teacher.views.google_client.exchange_code")
+    def test_callback_without_refresh_token_redirects_with_error(self, mock_exchange):
         connect_resp = self.client.get("/api/google/connect/")
         auth_url = connect_resp.url
         state = parse_qs(urlsplit(auth_url).query).get("state", [None])[0]
@@ -120,7 +148,9 @@ class GoogleOAuthAPITests(APITestCase):
         mock_exchange.return_value = mock_credentials
 
         resp = self.client.get(f"/api/google/callback/?code=fake-code&state={state}")
-        self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(resp.status_code, status.HTTP_302_FOUND)
+        query = parse_qs(urlsplit(resp.url).query)
+        self.assertIn("google_error", query)
 
     def test_disconnect_clears_connection(self):
         teacher = Teacher.load()
